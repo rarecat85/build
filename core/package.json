@@ -1,0 +1,26 @@
+{
+  "name": "core",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node dev.js",
+    "build": "node build.js",
+    "export": "node export.js",
+    "component-dev": "node component-dev.js",
+    "component-build": "node component-build.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "chokidar": "^4.0.1",
+    "clean-css": "^5.3.3",
+    "live-server": "^1.2.2",
+    "sass": "^1.89.0"
+  },
+  "dependencies": {
+    "prettier": "^3.4.2"
+  }
+}

@@ -1,0 +1,1 @@
+document.querySelector('.section01').querySelector('h2').innerText = '이것도 되니? 되냐고';
