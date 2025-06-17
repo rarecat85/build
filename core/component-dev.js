@@ -38,11 +38,10 @@ function minifyCSS(cssContent) {
 }
 
 /**
- * SCSS 파일 컴파일
+ * SCSS 파일 컴파일 (내용만 반환, 파일 저장 안함)
  */
 function compileSCSS(filePath, cssDir) {
     const fileName = path.basename(filePath).replace(/\.scss$/, '.css');
-    const cssFilePath = path.join(cssDir, fileName);
 
     try {
         // SCSS 컴파일
@@ -51,8 +50,6 @@ function compileSCSS(filePath, cssDir) {
         // Minify 처리
         const minifiedCSS = minifyCSS(result.css);
 
-        // Minify된 CSS 저장
-        fs.writeFileSync(cssFilePath, minifiedCSS, 'utf8');
         console.log(`${fileName} -> 변환 및 압축 성공!`);
         return minifiedCSS;
     } catch (error) {
@@ -320,6 +317,9 @@ function processIndexHTML(indexPath, componentFolders, srcPath, outputPath) {
     // 인덱스 HTML 읽기
     const indexContent = fs.readFileSync(indexPath, 'utf8');
     
+    // index.html 초기 해시값 설정
+    htmlFileHashes[indexPath] = generateFileHash(indexPath);
+    
     // 컴포넌트 태그 처리
     const processedHTML = processComponentTags(indexContent, componentFolders, srcPath);
     
@@ -343,10 +343,11 @@ function startServer(folderName) {
     const useMainHtml = watchFiles(folderName);
     
     // index.html에 컴포넌트 호출이 있는지 확인한 결과에 따라 실행할 HTML 결정
-    const htmlToOpen = useMainHtml ? 'main.html' : 'index.html';
+    const htmlToOpen = useMainHtml ? 'src/main.html' : 'src/index.html';
     
-    // Live Server 실행
-    exec(`npx live-server ${srcPath} --open=${htmlToOpen} --wait=100`, (error, stdout, stderr) => {
+    // Live Server 실행 - common 폴더 접근을 위해 상위 디렉토리를 루트로 설정
+    const serverRoot = path.join(currentDir, folderName);
+    exec(`npx live-server ${serverRoot} --open=${htmlToOpen} --wait=100`, (error, stdout, stderr) => {
         if (error) {
             console.error(`서버 실행 중 오류 발생: ${error.message}`);
             return;
@@ -424,23 +425,27 @@ function watchFiles(folderName) {
     // index.html 내용 읽기
     const indexContent = fs.readFileSync(indexPath, 'utf8');
     
+    // index.html 초기 해시값 설정
+    htmlFileHashes[indexPath] = generateFileHash(indexPath);
+    
     // index.html에 컴포넌트 호출이 있는지 확인
     const hasComponents = hasComponentCalls(indexContent, componentFolders);
     
-    // CSS 파일 링크 찾기
-    const cssLinkMatch = indexContent.match(/<link[^>]*href=["']([^"']*\.css)[^>]*>/);
+    // CSS 파일 링크 찾기 - ./assets/css/로 시작하는 로컬 CSS 파일만 찾기
+    const cssLinkMatch = indexContent.match(/<link[^>]*href=["']\.\/assets\/css\/([^"']*\.css)[^>]*>/);
     
     if (cssLinkMatch && cssLinkMatch[1]) {
         // 상대 경로에서 파일 이름만 추출
-        const cssFileName = path.basename(cssLinkMatch[1]);
+        const cssFileName = cssLinkMatch[1];
         mainCssFile = path.join(cssDir, cssFileName);
-        console.log(`HTML에서 CSS 파일 참조 발견: ${cssFileName}`);
+        console.log(`HTML에서 로컬 CSS 파일 참조 발견: ${cssFileName}`);
     } else {
-        console.log(`HTML에서 CSS 파일 참조를 찾을 수 없습니다. 컴포넌트 CSS는 병합되지 않습니다.`);
+        console.log(`HTML에서 로컬 CSS 파일 참조를 찾을 수 없습니다. 컴포넌트 CSS는 병합되지 않습니다.`);
     }
     
     // 메인 SCSS 파일 초기 컴파일
     let mainScssExists = false;
+    let mainCssContent = '';
     if (fs.existsSync(scssDir)) {
         console.log('메인 SCSS 파일 초기 컴파일 시작...');
         const scssFiles = fs.readdirSync(scssDir).filter(file => {
@@ -452,7 +457,10 @@ function watchFiles(folderName) {
             scssFiles.forEach(file => {
                 const filePath = path.join(scssDir, file);
                 console.log(`메인 SCSS 파일 컴파일: ${file}`);
-                compileSCSS(filePath, cssDir);
+                const compiledCSS = compileSCSS(filePath, cssDir);
+                if (compiledCSS) {
+                    mainCssContent += compiledCSS + '\n';
+                }
                 fileHashes[filePath] = generateFileHash(filePath);
             });
         }
@@ -466,11 +474,11 @@ function watchFiles(folderName) {
         if (cssFiles.length > 0) {
             mainCssFile = path.join(cssDir, cssFiles[0]);
             console.log(`기존 CSS 파일 사용: ${path.basename(mainCssFile)}`);
-        } else if (componentFolders.length > 0) {
-            // 컴포넌트가 있지만 메인 CSS가 없으면 기본 CSS 파일 생성
+        } else if (componentFolders.length > 0 || mainScssExists) {
+            // 컴포넌트가 있거나 메인 SCSS가 있으면 기본 CSS 파일 생성
             mainCssFile = path.join(cssDir, 'main.css');
             fs.writeFileSync(mainCssFile, '', 'utf8');
-            console.log(`컴포넌트용 기본 CSS 파일 생성: main.css`);
+            console.log(`기본 CSS 파일 생성: main.css`);
         } else {
             console.log(`CSS 파일을 찾을 수 없어 컴포넌트 CSS는 병합되지 않습니다.`);
             // mainCssFile은 null로 유지
@@ -511,27 +519,23 @@ function watchFiles(folderName) {
             }
         });
         
-        // 임시 컴포넌트 CSS 파일이 존재하면 메인 CSS 파일과 병합
+        // 컴포넌트 CSS 내용 읽기
+        let componentCssContent = '';
         if (fs.existsSync(tempComponentCssFile)) {
-            const componentCSS = fs.readFileSync(tempComponentCssFile, 'utf8');
-            
-            if (componentCSS.trim() !== '') {
-                // 메인 CSS 파일 읽기
-                const mainCSS = fs.existsSync(mainCssFile) ? fs.readFileSync(mainCssFile, 'utf8') : '';
-                
-                // 메인 CSS와 컴포넌트 CSS 병합
-                const combinedCSS = mainCSS + '\n' + componentCSS;
-                
-                // 병합된 CSS minify하여 메인 CSS 파일에 저장
-                const minifiedCSS = minifyCSS(combinedCSS);
-                fs.writeFileSync(mainCssFile, minifiedCSS, 'utf8');
-                console.log(`메인 CSS와 컴포넌트 CSS 병합 완료: ${path.basename(mainCssFile)}`);
-            }
-            
-            // 임시 파일 삭제
-            if (fs.existsSync(tempComponentCssFile)) {
-                fs.unlinkSync(tempComponentCssFile);
-            }
+            componentCssContent = fs.readFileSync(tempComponentCssFile, 'utf8');
+        }
+        
+        // 메인 CSS와 컴포넌트 CSS 병합하여 최종 CSS 생성
+        const combinedCSS = mainCssContent + '\n' + componentCssContent;
+        
+        // 병합된 CSS minify하여 메인 CSS 파일에 저장
+        const minifiedCSS = minifyCSS(combinedCSS);
+        fs.writeFileSync(mainCssFile, minifiedCSS, 'utf8');
+        console.log(`초기 CSS 빌드 완료: ${path.basename(mainCssFile)}`);
+        
+        // 임시 파일 삭제
+        if (fs.existsSync(tempComponentCssFile)) {
+            fs.unlinkSync(tempComponentCssFile);
         }
     }
     
@@ -585,57 +589,67 @@ function watchFiles(folderName) {
                 // 메인 SCSS 파일 변경 처리
                 console.log(`메인 SCSS 파일 변경 감지: ${filename}`);
                 
-                // 파일이 _로 시작하는지 확인
-                if (path.basename(filename).startsWith('_')) {
-                    // 종속성 맵에서 이 파일을 참조하는 파일들 컴파일
-                    if (dependencyMap[filePath]) {
-                        dependencyMap[filePath].forEach(mainFile => {
-                            compileSCSS(mainFile, cssDir);
-                        });
-                    }
-                } else {
-                    compileSCSS(filePath, cssDir);
-                }
-                
                 // mainCssFile이 유효할 때만 컴포넌트 CSS 처리
                 if (mainCssFile) {
-                    // 임시 컴포넌트 CSS 파일 생성
+                    console.log('전체 SCSS 재빌드 시작...');
+                    
+                    // 1. 먼저 메인 SCSS 파일들을 다시 컴파일
+                    let mainCssContent = '';
+                    if (fs.existsSync(scssDir)) {
+                        const scssFiles = fs.readdirSync(scssDir).filter(file => {
+                            return file.endsWith('.scss') && !file.startsWith('_');
+                        });
+                        
+                        scssFiles.forEach(file => {
+                            const filePath = path.join(scssDir, file);
+                            console.log(`메인 SCSS 재컴파일: ${file}`);
+                            const compiledCSS = compileSCSS(filePath, cssDir);
+                            // 개별 CSS 파일 대신 내용만 수집
+                            if (compiledCSS) {
+                                mainCssContent += compiledCSS + '\n';
+                            }
+                        });
+                    }
+                    
+                    // 2. 임시 컴포넌트 CSS 파일 생성 (초기화)
                     const tempComponentCssFile = path.join(cssDir, '_components.css');
                     fs.writeFileSync(tempComponentCssFile, '', 'utf8');
                     
-                    // 모든 컴포넌트 재컴파일
+                    // 3. 모든 컴포넌트 재컴파일
+                    console.log('모든 컴포넌트 SCSS 재컴파일...');
                     componentFolders.forEach(component => {
                         compileComponentSCSS(component.path, cssDir, tempComponentCssFile);
                     });
                     
-                    // 메인 CSS와 컴포넌트 CSS 병합
+                    // 4. 컴포넌트 CSS 내용 읽기
+                    let componentCssContent = '';
                     if (fs.existsSync(tempComponentCssFile)) {
-                        const componentCSS = fs.readFileSync(tempComponentCssFile, 'utf8');
-                        
-                        if (componentCSS.trim() !== '') {
-                            // 메인 CSS 파일 읽기
-                            const mainCSS = fs.existsSync(mainCssFile) ? fs.readFileSync(mainCssFile, 'utf8') : '';
-                            
-                            // 메인 CSS와 컴포넌트 CSS 병합
-                            const combinedCSS = mainCSS + '\n' + componentCSS;
-                            
-                            // 병합된 CSS minify하여 메인 CSS 파일에 저장
-                            const minifiedCSS = minifyCSS(combinedCSS);
-                            fs.writeFileSync(mainCssFile, minifiedCSS, 'utf8');
-                            console.log(`메인 CSS와 컴포넌트 CSS 병합 완료: ${path.basename(mainCssFile)}`);
-                        }
-                        
-                        // 임시 파일 삭제
-                        if (fs.existsSync(tempComponentCssFile)) {
-                            fs.unlinkSync(tempComponentCssFile);
-                        }
+                        componentCssContent = fs.readFileSync(tempComponentCssFile, 'utf8');
                     }
                     
-                    // style.css 파일이 있으면 삭제
-                    const styleFilePath = path.join(cssDir, 'style.css');
-                    if (fs.existsSync(styleFilePath)) {
-                        fs.unlinkSync(styleFilePath);
-                        console.log('불필요한 style.css 파일이 삭제되었습니다.');
+                    // 5. 메인 CSS와 컴포넌트 CSS 병합하여 새로운 CSS 생성
+                    const combinedCSS = mainCssContent + '\n' + componentCssContent;
+                    
+                    // 6. 병합된 CSS minify하여 메인 CSS 파일에 저장 (기존 내용 완전 교체)
+                    const minifiedCSS = minifyCSS(combinedCSS);
+                    fs.writeFileSync(mainCssFile, minifiedCSS, 'utf8');
+                    console.log(`전체 CSS 재빌드 완료: ${path.basename(mainCssFile)}`);
+                    
+                    // 7. 임시 파일 삭제
+                    if (fs.existsSync(tempComponentCssFile)) {
+                        fs.unlinkSync(tempComponentCssFile);
+                    }
+                    
+                    // 8. 개별 CSS 파일들 삭제 (메인 CSS 파일만 유지)
+                    if (fs.existsSync(cssDir)) {
+                        const cssFiles = fs.readdirSync(cssDir).filter(file => 
+                            file.endsWith('.css') && file !== path.basename(mainCssFile)
+                        );
+                        cssFiles.forEach(file => {
+                            const filePath = path.join(cssDir, file);
+                            fs.unlinkSync(filePath);
+                            console.log(`개별 CSS 파일 삭제: ${file}`);
+                        });
                     }
                 }
             } else {
@@ -644,44 +658,65 @@ function watchFiles(folderName) {
                 
                 // 메인 CSS 파일이 유효할 때만 처리
                 if (mainCssFile) {
-                    // 임시 컴포넌트 CSS 파일 생성
+                    console.log('전체 SCSS 재빌드 시작...');
+                    
+                    // 1. 먼저 메인 SCSS 파일들을 다시 컴파일
+                    let mainCssContent = '';
+                    if (fs.existsSync(scssDir)) {
+                        const scssFiles = fs.readdirSync(scssDir).filter(file => {
+                            return file.endsWith('.scss') && !file.startsWith('_');
+                        });
+                        
+                        scssFiles.forEach(file => {
+                            const filePath = path.join(scssDir, file);
+                            console.log(`메인 SCSS 재컴파일: ${file}`);
+                            const compiledCSS = compileSCSS(filePath, cssDir);
+                            // 개별 CSS 파일 대신 내용만 수집
+                            if (compiledCSS) {
+                                mainCssContent += compiledCSS + '\n';
+                            }
+                        });
+                    }
+                    
+                    // 2. 임시 컴포넌트 CSS 파일 생성 (초기화)
                     const tempComponentCssFile = path.join(cssDir, '_components.css');
                     fs.writeFileSync(tempComponentCssFile, '', 'utf8');
                     
-                    // 모든 컴포넌트 재컴파일 (변경된 컴포넌트뿐만 아니라 모든 컴포넌트를 재컴파일)
+                    // 3. 모든 컴포넌트 재컴파일
                     console.log('모든 컴포넌트 SCSS 재컴파일...');
                     componentFolders.forEach(component => {
                         compileComponentSCSS(component.path, cssDir, tempComponentCssFile);
                     });
                     
-                    // 메인 CSS와 컴포넌트 CSS 병합
+                    // 4. 컴포넌트 CSS 내용 읽기
+                    let componentCssContent = '';
                     if (fs.existsSync(tempComponentCssFile)) {
-                        const componentCSS = fs.readFileSync(tempComponentCssFile, 'utf8');
-                        
-                        if (componentCSS.trim() !== '') {
-                            // 메인 CSS 파일 읽기
-                            const mainCSS = fs.existsSync(mainCssFile) ? fs.readFileSync(mainCssFile, 'utf8') : '';
-                            
-                            // 메인 CSS와 컴포넌트 CSS 병합
-                            const combinedCSS = mainCSS + '\n' + componentCSS;
-                            
-                            // 병합된 CSS minify하여 메인 CSS 파일에 저장
-                            const minifiedCSS = minifyCSS(combinedCSS);
-                            fs.writeFileSync(mainCssFile, minifiedCSS, 'utf8');
-                            console.log(`메인 CSS와 컴포넌트 CSS 병합 완료: ${path.basename(mainCssFile)}`);
-                        }
-                        
-                        // 임시 파일 삭제
-                        if (fs.existsSync(tempComponentCssFile)) {
-                            fs.unlinkSync(tempComponentCssFile);
-                        }
+                        componentCssContent = fs.readFileSync(tempComponentCssFile, 'utf8');
                     }
                     
-                    // style.css 파일이 있으면 삭제
-                    const styleFilePath = path.join(cssDir, 'style.css');
-                    if (fs.existsSync(styleFilePath)) {
-                        fs.unlinkSync(styleFilePath);
-                        console.log('불필요한 style.css 파일이 삭제되었습니다.');
+                    // 5. 메인 CSS와 컴포넌트 CSS 병합하여 새로운 CSS 생성
+                    const combinedCSS = mainCssContent + '\n' + componentCssContent;
+                    
+                    // 6. 병합된 CSS minify하여 메인 CSS 파일에 저장 (기존 내용 완전 교체)
+                    const minifiedCSS = minifyCSS(combinedCSS);
+                    fs.writeFileSync(mainCssFile, minifiedCSS, 'utf8');
+                    console.log(`전체 CSS 재빌드 완료: ${path.basename(mainCssFile)}`);
+                    
+                    // 7. 임시 파일 삭제
+                    if (fs.existsSync(tempComponentCssFile)) {
+                        fs.unlinkSync(tempComponentCssFile);
+                    }
+                    
+                    // 8. 개별 CSS 파일들 삭제 (메인 CSS 파일만 유지)
+                    if (fs.existsSync(cssDir)) {
+                        const cssFiles = fs.readdirSync(cssDir).filter(file => 
+                            file.endsWith('.css') && file !== path.basename(mainCssFile)
+                        );
+                        cssFiles.forEach(file => {
+                            const filePath = path.join(cssDir, file);
+                            fs.unlinkSync(filePath);
+                            console.log(`개별 CSS 파일 삭제: ${file}`);
+                        });
                     }
                     
                     // 컴포넌트 호출이 있는 경우에만 HTML 업데이트
@@ -698,22 +733,27 @@ function watchFiles(folderName) {
     // 인덱스 HTML 파일 변경 감지
     fs.watch(indexPath, (eventType) => {
         if (eventType === 'change') {
-            console.log(`index.html 변경 감지`);
+            const newHash = generateFileHash(indexPath);
             
-            // index.html 내용 다시 읽기
-            const updatedIndexContent = fs.readFileSync(indexPath, 'utf8');
-            
-            // 컴포넌트 호출 여부 확인
-            const updatedHasComponents = hasComponentCalls(updatedIndexContent, componentFolders);
-            
-            if (updatedHasComponents) {
-                // 컴포넌트 호출이 있으면 main.html 생성
-                processIndexHTML(indexPath, componentFolders, srcPath, mainHtmlPath);
-                console.log(`컴포넌트 호출이 감지되어 main.html 업데이트됨`);
-            } else if (fs.existsSync(mainHtmlPath)) {
-                // 컴포넌트 호출이 없지만 main.html이 있으면 삭제
-                fs.unlinkSync(mainHtmlPath);
-                console.log(`컴포넌트 호출이 없어졌으므로 main.html 삭제됨`);
+            if (htmlFileHashes[indexPath] !== newHash) {
+                htmlFileHashes[indexPath] = newHash;
+                console.log(`index.html 변경 감지`);
+                
+                // index.html 내용 다시 읽기
+                const updatedIndexContent = fs.readFileSync(indexPath, 'utf8');
+                
+                // 컴포넌트 호출 여부 확인
+                const updatedHasComponents = hasComponentCalls(updatedIndexContent, componentFolders);
+                
+                if (updatedHasComponents) {
+                    // 컴포넌트 호출이 있으면 main.html 생성
+                    processIndexHTML(indexPath, componentFolders, srcPath, mainHtmlPath);
+                    console.log(`컴포넌트 호출이 감지되어 main.html 업데이트됨`);
+                } else if (fs.existsSync(mainHtmlPath)) {
+                    // 컴포넌트 호출이 없지만 main.html이 있으면 삭제
+                    fs.unlinkSync(mainHtmlPath);
+                    console.log(`컴포넌트 호출이 없어졌으므로 main.html 삭제됨`);
+                }
             }
         }
     });
