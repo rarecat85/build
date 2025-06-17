@@ -1,0 +1,266 @@
+@use '../../assets/scss/variable' as *;
+@use '../../assets/scss/mixin' as *;
+
+
+.overview {
+  .inner {
+    padding: rem(64) rem(16);
+    @include tablet {
+      padding: rem(80) rem(24);
+    }
+    @include desktop {
+      padding: rem(120) 0 0;
+    }
+  }
+  &-heading {
+    margin-bottom:rem(56);
+    @include tablet {
+      margin-bottom: rem(80);
+    }
+    &-title {
+      max-width: rem(1240);
+      margin: 0 auto;
+      @include font(28,114%,400,$black);
+      text-align: center;
+      margin-bottom: rem(32);
+      span {
+        font-family: inherit;
+        span {
+          font-family: inherit;
+        }
+      }
+      @include tablet {
+        font-size:rem(44);
+        margin-bottom: rem(56);
+      }
+      @include desktop {
+        font-size:rem(48);
+        margin-bottom:rem(80);
+      }
+    }
+    &-img {
+      width:100%;
+      border-radius: rem(20);
+      overflow: hidden;
+      aspect-ratio: 328/438;
+      position:relative;
+      picture {
+        img {
+          @include img();
+        }
+      }
+      @include tablet {
+        max-width: rem(864);
+        aspect-ratio: 864/432;
+        border-radius: rem(28);
+        margin: 0 auto;
+      }
+      @include desktop {
+        max-width: rem(1240);
+      }
+      .overview-heading-motion-imgs {
+        width:100%;
+        position:absolute;
+        top:0;
+        left:50%;
+        transform:translateX(-50%);
+        .motion-icon {
+          position:absolute;
+          visibility: hidden;
+          &.heart-icon {
+            width:vw(200);
+            top:vw(820);
+            left:50%;
+            transform:translateX(-70%);
+            @include tablet {
+              width:rem(46);
+              top:rem(120);
+              transform:translateX(rem(0));
+            }
+            @include desktop {
+              width:rem(60);
+              top:rem(160);
+              left:50%;
+              transform:translateX(0);
+            }
+          }
+          &.smile-icon {
+            width:vw(275);
+            top:vw(370);
+            left:50%;
+            transform:translateX(vw(200));
+            @include tablet {
+              width:rem(60);
+              top:rem(50);
+              transform:translateX(rem(70));
+            }
+            @include desktop {
+              width:rem(88);
+              top:rem(40);
+              left:50%;
+              transform:translateX(rem(80));
+            }
+          }
+          &.img-icon {
+            width:vw(300);
+            top:vw(450);
+            left:50%;
+            transform:translateX(calc(-100% - vw(470)));
+            @include tablet {
+              width:rem(72);
+              top:rem(50);
+              left:50%;
+              transform:translateX(calc(-100% - rem(50)));
+            }
+            @include desktop {
+              width:rem(96);
+              top:rem(71);
+              left:50%;
+              transform:translateX(calc(-100% - rem(65)));
+            }
+          }
+          &.like-icon01 {
+            width:vw(100);
+            top:vw(420);
+            left:50%;
+            transform:translateX(vw(650));
+            opacity:0.7;
+            @include tablet {
+              width:rem(24);
+              top:rem(70);
+              transform:translateX(rem(150));
+            }
+            @include desktop {
+              width:rem(36);
+              top:rem(27);
+              left:50%;
+              transform:translateX(calc(-100% - rem(15)));
+            }
+          }
+          &.like-icon02 {
+            width:vw(125);
+            top:vw(250);
+            left:50%;
+            transform:translateX(calc(-100% - vw(250)));
+            opacity:0.5;
+            @include tablet {
+              width:rem(30);
+              top:rem(29);
+              left:50%;
+              transform:translateX(-50%);
+            }
+            @include desktop {
+              width:rem(28);
+              top:rem(78);
+              left:50%;
+              transform:translateX(rem(220));
+            }
+          }
+          &.like-icon03 {
+            width:vw(150);
+            top:vw(670);
+            left:50%;
+            transform:translateX(calc(-100% - vw(420)));
+            @include tablet {
+              width:rem(36);
+              top:rem(100);
+              left:50%;
+              transform:translateX(calc(-100% - rem(40)));
+            }
+            @include desktop {
+              width:rem(40);
+              top:rem(145);
+              left:50%;
+              transform:translateX(calc(-100% - rem(60)));
+            }
+          }
+        }
+      }
+    }
+  }
+  &-cont {
+    width:100%;
+    display:flex;
+    flex-direction: column;
+    &-box {
+      width:100%;
+      @include tablet {
+        display:flex;
+        align-items:flex-start;
+        column-gap: rem(80);
+      }
+      @include desktop {
+        column-gap: rem(120);
+      }
+    }
+    &:first-child {
+      margin-bottom: rem(56);
+      @include tablet {
+        margin-bottom: 0;
+        flex-direction:column-reverse;
+        row-gap:rem(56);
+      }
+      @include desktop {
+        row-gap: rem(80);
+      }
+    }
+    &-img {
+      width:100%;
+      margin-bottom:rem(24);
+      position:relative;
+      img {
+        @include img();
+      }
+      @include tablet {
+        margin-bottom:rem(56);
+      }
+      @include desktop {
+        margin-bottom: rem(80);
+      }
+      .overview-heart-tower-img {
+        position:absolute;
+        top:rem(-23);
+        left:rem(9);
+        width:rem(85);
+        height:auto;
+        @include tablet {
+          top:rem(-32);
+          left:rem(12);
+          width:rem(110);
+        }
+        @include desktop {
+          top:rem(-40);
+          left:rem(16);
+          width:rem(162);
+        }
+      }
+    }
+    &-txt {
+      @include font(16,125%,400,$warmGray);
+      span {
+        font-weight:600;
+      }
+      @include tablet {
+        font-size:rem(24);
+      }
+      @include desktop {
+        font-size:rem(36);
+      }
+    }
+    &-lifesgood-logo {
+      width: rem(194);
+      margin-top: rem(16);
+      img {
+        @include img();
+      }
+      @include tablet {
+        width: rem(242);
+        margin-top: rem(24);
+      }
+      @include desktop {
+        width: rem(362);
+        margin-top: rem(40);
+      }
+    }
+  }
+}

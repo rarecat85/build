@@ -1,0 +1,152 @@
+@use '../../assets/scss/mixin'as *;
+@use '../../assets/scss/variable'as *;
+
+body {
+   background: $bg;
+}
+
+.stories {
+   margin: 0 auto;
+
+   .inner {
+      max-width: $inner;
+
+      @include tablet {
+         padding-left: rem(24);
+      }
+
+      @include desktop {
+         padding-left: 0;
+      }
+   }
+
+   &-title {
+      @include font(28, 32px, 550);
+
+      @include tablet {
+         @include font(44, 48px, 550);
+      }
+
+      @include desktop {
+         @include font(56, 60px, 550);
+      }
+   }
+
+   &-slide-bx {
+      margin-top: rem(12);
+
+      @include tablet {
+         margin-top: rem(32);
+      }
+
+      @include desktop {
+         margin-top: rem(48);
+      }
+
+      .swiper {
+         padding: 0 rem(16) rem($mo_padding);
+         max-width: $inner;;
+
+         @include tablet {
+            padding: 0 rem(24) rem($tab_padding);
+         }
+
+         @include desktop {
+            padding: 0 0 rem($pc_padding);
+         }
+      }
+
+      .swiper-wrapper {
+         .swiper-slide {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            height: auto;
+            background-color: $white;
+            border-radius: rem(28);
+            overflow: hidden;
+
+            .img-bx {
+               aspect-ratio: 310 / 206.67;
+
+               img {
+                  @include img(cover)
+               }
+            }
+
+            .txt-bx {
+               display: flex;
+               flex-direction: column;
+               height: 100%;
+               gap: rem(6);
+               padding: rem(16) rem(20) rem(20);
+
+               @include tablet {
+                  gap: rem(8);
+               }
+
+               @include desktop {}
+
+               h3 {
+                  @include font(24, 28px, 400);
+
+                  @include tablet {
+                     @include font(32, 36px, 300);
+                  }
+
+                  @include desktop {
+                     @include font(36, 42px, 300);
+                  }
+               }
+
+               p {
+                  padding-bottom: rem(20);
+                  @include font(16, 20px, 400, $warmGray);
+
+                  @include tablet {
+                     @include font(16, 20px, 400);
+                  }
+
+                  @include desktop {
+                     @include font(24, 120%, 400);
+                  }
+               }
+
+               .white-btn {
+                  margin-top: auto;
+                  @include btn($white);
+               }
+            }
+         }
+      }
+   }
+
+   .swiper-btnbx {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: rem(16);
+      margin-top: rem(20);
+
+      @include tablet {
+         display: none;
+      }
+
+      &-prev,
+      &-next {
+         width: rem(24);
+         height: rem(14);
+         background: url('/src/assets/images/lifes-good-campaign-2025-radio-optimism-lgcom-images-learn-about-arrow-icon.svg') no-repeat;
+         background-size: contain;
+      }
+
+      &-next {
+         transform: rotate(180deg);
+      }
+
+      .swiper-button-disabled {
+         opacity: 0.5;
+      }
+   }
+}
