@@ -5,7 +5,7 @@ function bannerFlolatingAnimation() {
     // 시작 요소 입력 필요
     const startElement = document.querySelector('.overview');
     const endElement = document.querySelector('.banner-main-area-startbtn');
-    const test = '../images/lifes-good-campaign-2025-radio-optimism-lgcom-images-parallax-logo-desktop.png';
+    const test = "/content/dam/channel/wcms/mx/lifes-good-campaign/2025/radio-optimism/lg-com-test/assets/images/lifes-good-campaign-2025-radio-optimism-lgcom-images-parallax-logo-desktop.png";
 
     // 이전 스크롤 트리거 요소 제거
     gsap.set(endElement, {

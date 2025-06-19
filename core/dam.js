@@ -27,10 +27,10 @@ function replaceAssetPaths(htmlContent, newAssetPath) {
 function replaceCssPaths(cssContent, newAssetPath) {
     // url() 함수 내의 경로 수정 (/src/ 또는 ../ 로 시작하는 경로를 완전히 대체)
     cssContent = cssContent.replace(/url\(['"]?(\/src\/[^'"\)]+)['"]?\)/g, (match, p1) => {
-        return `url("${newAssetPath}${p1.replace(/^\/src\//, '')}")`;
+        return `url("${newAssetPath}assets/${p1.replace(/^\/src\//, '')}")`;
     });
     cssContent = cssContent.replace(/url\(['"]?(\.\.\/[^'"\)]+)['"]?\)/g, (match, p1) => {
-        return `url("${newAssetPath}${p1.replace(/^\.\.\//, '')}")`;
+        return `url("${newAssetPath}assets/${p1.replace(/^\.\.\//, '')}")`;
     });
     return cssContent;
 }
@@ -44,26 +44,26 @@ function replaceCssPaths(cssContent, newAssetPath) {
 function replaceJsPaths(jsContent, newAssetPath) {
     // import 문에서 경로 대체
     jsContent = jsContent.replace(/import\s+['"](\/src\/[^'"]+)['"]/g, (match, p1) => {
-        return `import "${newAssetPath}${p1.replace(/^\/src\//, '')}"`;
+        return `import "${newAssetPath}assets/${p1.replace(/^\/src\//, '')}"`;
     });
     jsContent = jsContent.replace(/import\s+['"](\.\.\/[^'"]+)['"]/g, (match, p1) => {
-        return `import "${newAssetPath}${p1.replace(/^\.\.\//, '')}"`;
+        return `import "${newAssetPath}assets/${p1.replace(/^\.\.\//, '')}"`;
     });
 
     // require 문에서 경로 대체
     jsContent = jsContent.replace(/require\(['"](\/src\/[^'"]+)['"]\)/g, (match, p1) => {
-        return `require("${newAssetPath}${p1.replace(/^\/src\//, '')}")`;
+        return `require("${newAssetPath}assets/${p1.replace(/^\/src\//, '')}")`;
     });
     jsContent = jsContent.replace(/require\(['"](\.\.\/[^'"]+)['"]\)/g, (match, p1) => {
-        return `require("${newAssetPath}${p1.replace(/^\.\.\//, '')}")`;
+        return `require("${newAssetPath}assets/${p1.replace(/^\.\.\//, '')}")`;
     });
 
     // 일반 문자열 내 경로 대체 (예: '../assets/...')
     jsContent = jsContent.replace(/['"](\/src\/[^'"]+)['"]/g, (match, p1) => {
-        return `"${newAssetPath}${p1.replace(/^\/src\//, '')}"`;
+        return `"${newAssetPath}assets/${p1.replace(/^\/src\//, '')}"`;
     });
     jsContent = jsContent.replace(/['"](\.\.\/[^'"]+)['"]/g, (match, p1) => {
-        return `"${newAssetPath}${p1.replace(/^\.\.\//, '')}"`;
+        return `"${newAssetPath}assets/${p1.replace(/^\.\.\//, '')}"`;
     });
 
     return jsContent;
