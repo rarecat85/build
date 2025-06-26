@@ -9,7 +9,8 @@
     "build": "node ../core/build.js",
     "cmp-build": "node ../core/component-build.js",
     "export": "node ../core/export.js",
-    "dam": "node ../core/dam.js"
+    "dam": "node ../core/dam.js",
+    "copy": "node ../core/copy.js"
   },
   "keywords": [],
   "author": "",
