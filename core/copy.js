@@ -134,106 +134,54 @@ async function processHTMLFiles(folderName) {
     console.log(`실행 폴더: ${executionDir}`);
     console.log(`처리 중인 폴더: ${targetFolder}`);
     
-    // HTML 파일들 찾기
-    const htmlFiles = [];
+    // main.html 파일만 찾기
+    const mainHtmlPath = path.join(targetFolder, 'src', 'main.html');
     
-    function findHTMLFiles(dir) {
-        const files = fs.readdirSync(dir);
-        files.forEach(file => {
-            const filePath = path.join(dir, file);
-            const stat = fs.statSync(filePath);
-            
-            if (stat.isDirectory()) {
-                findHTMLFiles(filePath);
-            } else if (file.endsWith('.html')) {
-                htmlFiles.push(filePath);
-            }
+    if (!fs.existsSync(mainHtmlPath)) {
+        console.error(`main.html 파일을 찾을 수 없습니다: ${mainHtmlPath}`);
+        return;
+    }
+    
+    console.log(`처리 중: src/main.html`);
+    
+    try {
+        const htmlContent = fs.readFileSync(mainHtmlPath, 'utf8');
+        const results = extractDataTpFromHTML(htmlContent, 'src/main.html');
+        
+        if (results.length === 0) {
+            console.log('추출할 data-tp 데이터가 없습니다.');
+            return;
+        }
+        
+        // 마크업 순서대로 정렬
+        results.sort((a, b) => a.originalIndex - b.originalIndex);
+        
+        // originalIndex 제거 (엑셀에 포함하지 않음)
+        const finalResults = results.map(({ originalIndex, ...rest }) => rest);
+        
+        // 엑셀 파일 생성 (실행 폴더에 저장)
+        const outputPath = path.join(executionDir, 'copy.xlsx');
+        await createExcelFile(finalResults, outputPath, folderName);
+        
+        // 요약 정보 출력
+        console.log('\n=== 추출 완료 ===');
+        console.log(`총 ${finalResults.length}개의 항목이 추출되었습니다.`);
+        
+        const typeCounts = {};
+        finalResults.forEach(result => {
+            typeCounts[result.type] = (typeCounts[result.type] || 0) + 1;
         });
+        
+        console.log('\n타입별 개수:');
+        Object.entries(typeCounts).forEach(([type, count]) => {
+            console.log(`  ${type}: ${count}개`);
+        });
+        
+        console.log(`\n엑셀 파일 위치: ${outputPath}`);
+        
+    } catch (error) {
+        console.error(`파일 처리 중 오류 발생: ${mainHtmlPath}`, error);
     }
-    
-    findHTMLFiles(targetFolder);
-    
-    if (htmlFiles.length === 0) {
-        console.log('HTML 파일을 찾을 수 없습니다.');
-        return;
-    }
-    
-    console.log(`발견된 HTML 파일 수: ${htmlFiles.length}`);
-    
-    // main.html을 우선적으로 처리하기 위해 파일 정렬
-    htmlFiles.sort((a, b) => {
-        const aIsMain = path.basename(a) === 'main.html';
-        const bIsMain = path.basename(b) === 'main.html';
-        
-        if (aIsMain && !bIsMain) return -1;
-        if (!aIsMain && bIsMain) return 1;
-        return a.localeCompare(b);
-    });
-    
-    let allResults = [];
-    
-    // 각 HTML 파일 처리
-    htmlFiles.forEach((htmlFile, fileIndex) => {
-        const relativePath = path.relative(targetFolder, htmlFile);
-        console.log(`처리 중: ${relativePath}`);
-        
-        try {
-            const htmlContent = fs.readFileSync(htmlFile, 'utf8');
-            const results = extractDataTpFromHTML(htmlContent, relativePath);
-            
-            allResults = allResults.concat(results);
-            
-            console.log(`  - ${results.length}개의 data-tp 항목 발견`);
-        } catch (error) {
-            console.error(`파일 처리 중 오류 발생: ${htmlFile}`, error);
-        }
-    });
-    
-    if (allResults.length === 0) {
-        console.log('추출할 data-tp 데이터가 없습니다.');
-        return;
-    }
-    
-    // main.html을 우선적으로 정렬하고, 각 파일 내에서는 마크업 순서대로 정렬
-    allResults.sort((a, b) => {
-        // main.html 우선
-        const aIsMain = a.fileName.includes('main.html');
-        const bIsMain = b.fileName.includes('main.html');
-        
-        if (aIsMain && !bIsMain) return -1;
-        if (!aIsMain && bIsMain) return 1;
-        
-        // 같은 파일 내에서는 마크업 순서대로
-        if (a.fileName === b.fileName) {
-            return a.originalIndex - b.originalIndex;
-        }
-        
-        // 파일명 순서
-        return a.fileName.localeCompare(b.fileName);
-    });
-    
-    // originalIndex 제거 (엑셀에 포함하지 않음)
-    allResults = allResults.map(({ originalIndex, ...rest }) => rest);
-    
-    // 엑셀 파일 생성 (실행 폴더에 저장)
-    const outputPath = path.join(executionDir, `${folderName}_data-tp_extraction.xlsx`);
-    await createExcelFile(allResults, outputPath, folderName);
-    
-    // 요약 정보 출력
-    console.log('\n=== 추출 완료 ===');
-    console.log(`총 ${allResults.length}개의 항목이 추출되었습니다.`);
-    
-    const typeCounts = {};
-    allResults.forEach(result => {
-        typeCounts[result.type] = (typeCounts[result.type] || 0) + 1;
-    });
-    
-    console.log('\n타입별 개수:');
-    Object.entries(typeCounts).forEach(([type, count]) => {
-        console.log(`  ${type}: ${count}개`);
-    });
-    
-    console.log(`\n엑셀 파일 위치: ${outputPath}`);
 }
 
 /**
