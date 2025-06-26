@@ -10,7 +10,8 @@
     "cmp-build": "node ../core/component-build.js",
     "export": "node ../core/export.js",
     "dam": "node ../core/dam.js",
-    "copy": "node ../core/copy.js"
+    "copy": "node ../core/copy.js",
+    "change": "node ../core/change.js"
   },
   "keywords": [],
   "author": "",
